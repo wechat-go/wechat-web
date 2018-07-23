@@ -7,7 +7,7 @@
         <h3 class="title">微信后台管理系统|注册</h3>
       </div>
 
-      <el-form-item prop="phone">
+      <el-form-item prop="phone" ref="phoneform">
         <span class="svg-container svg-container_login">
           <svg-icon icon-class="phone" />
         </span>
@@ -24,7 +24,7 @@
           </el-form-item>
         </el-col>
         <el-col :span="8" style="text-align:right;color:#fff">
-          <el-button type="primary" style="width:90%;height:50px">发送验证码</el-button>
+          <el-button @click="sendsms" type="primary" style="width:90%;height:50px">发送验证码</el-button>
         </el-col>
       </el-row>
 
@@ -49,7 +49,7 @@
       </el-form-item>
 
       <el-row type="flex" justify="space-between">
-        <el-button type="primary" style="width:48%;">立即注册</el-button>
+        <el-button type="primary" style="width:48%;" :disabled="disabled">立即注册</el-button>
         <router-link to="/login" style="width:48%;">
           <el-button type="primary" style="width:100%;">返回登录</el-button>
         </router-link>
@@ -61,20 +61,21 @@
 </template>
 
 <script>
-import { isvalidUsername } from '@/utils/validate'
+import { validateMobile } from '@/utils/validate'
 import LangSelect from '@/components/LangSelect'
-
 export default {
   components: { LangSelect },
   name: 'login',
   data() {
-    const validateUsername = (rule, value, callback) => {
-      if (!isvalidUsername(value)) {
-        callback(new Error('Please enter the correct user name'))
+    // 验证手机号
+    const vamobile = (rule, value, callback) => {
+      if (!validateMobile(value)) {
+        callback(new Error('请输入正确的手机号码！'))
       } else {
         callback()
       }
     }
+
     const validatePassword = (rule, value, callback) => {
       if (value.length < 6) {
         callback(new Error('The password can not be less than 6 digits'))
@@ -88,16 +89,29 @@ export default {
         v_code: ''
       },
       loginRules: {
-        phone: [{ required: true, trigger: 'blur', validator: validateUsername }],
+        phone: [{ required: true, trigger: 'blur', validator: vamobile }],
         v_code: [{ required: true, trigger: 'blur', validator: validatePassword }]
       },
       passwordType: 'password',
       loading: false,
       showDialog: false,
+      disabled: true,
       checked: true
     }
   },
   methods: {
+    sendsms() {
+      console.log(this.$refs['phoneform'])
+      this.$refs['phoneform'].validate(valid => {
+        console.log(6666)
+        if (valid) {
+          console.log(11)
+        } else {
+          console.log(222)
+          return false
+        }
+      })
+    },
     showPwd() {
       if (this.passwordType === 'password') {
         this.passwordType = ''
@@ -152,6 +166,8 @@ export default {
 <style rel="stylesheet/scss" lang="scss">
 $bg:#2d3a4b;
 $light_gray:#eee;
+
+
 
 
 
