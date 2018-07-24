@@ -7,7 +7,7 @@
         <h3 class="title">微信后台管理系统|注册</h3>
       </div>
 
-      <el-form-item prop="phone" ref="phoneform">
+      <el-form-item prop="phone">
         <span class="svg-container svg-container_login">
           <svg-icon icon-class="phone" />
         </span>
@@ -28,22 +28,22 @@
         </el-col>
       </el-row>
 
-      <el-form-item prop="password">
+      <el-form-item prop="pass">
         <span class="svg-container">
           <svg-icon icon-class="password" />
         </span>
-        <el-input name="password" :type="passwordType" @keyup.enter.native="handleLogin" v-model="loginForm.password" autoComplete="on" placeholder="密码" />
-        <span class="show-pwd" @click="showPwd">
+        <el-input name="password" :type="passwordType" @keyup.enter.native="handleLogin" v-model="loginForm.pass" autoComplete="on" placeholder="密码" />
+        <span class="show-pwd" @click="showPwd(0)">
           <svg-icon icon-class="eye" />
         </span>
       </el-form-item>
 
-      <el-form-item prop="password">
+      <el-form-item prop="checkPass">
         <span class="svg-container">
           <svg-icon icon-class="password" />
         </span>
-        <el-input name="password" :type="passwordType" @keyup.enter.native="handleLogin" v-model="loginForm.password" autoComplete="on" placeholder="确认密码" />
-        <span class="show-pwd" @click="showPwd">
+        <el-input name="password" :type="passwordType1" @keyup.enter.native="handleLogin" v-model="loginForm.checkPass" autoComplete="on" placeholder="确认密码" />
+        <span class="show-pwd" @click="showPwd(1)">
           <svg-icon icon-class="eye" />
         </span>
       </el-form-item>
@@ -63,6 +63,7 @@
 <script>
 import { validateMobile } from '@/utils/validate'
 import LangSelect from '@/components/LangSelect'
+import { sendsms } from '@/api/login'
 export default {
   components: { LangSelect },
   name: 'login',
@@ -76,9 +77,33 @@ export default {
       }
     }
 
-    const validatePassword = (rule, value, callback) => {
-      if (value.length < 6) {
-        callback(new Error('The password can not be less than 6 digits'))
+    const validatecode = (rule, value, callback) => {
+      if (value.length !== 6) {
+        callback(new Error('验证码是六位数字！'))
+      } else {
+        callback()
+      }
+    }
+
+    // 验证密码
+    const validatePass = (rule, value, callback) => {
+      if (value === '') {
+        callback(new Error('请输入密码'))
+      } else if (value.length < 6) {
+        callback(new Error('密码至少为6位数'))
+      } else {
+        if (this.loginForm.checkPass !== '') {
+          this.$refs.loginForm.validateField('checkPass')
+        }
+        callback()
+      }
+    }
+
+    const validatePass2 = (rule, value, callback) => {
+      if (value === '') {
+        callback(new Error('请再次输入密码'))
+      } else if (value !== this.loginForm.pass) {
+        callback(new Error('两次输入密码不一致!'))
       } else {
         callback()
       }
@@ -86,13 +111,18 @@ export default {
     return {
       loginForm: {
         phone: '',
-        v_code: ''
+        v_code: '',
+        pass: '',
+        checkPass: ''
       },
       loginRules: {
         phone: [{ required: true, trigger: 'blur', validator: vamobile }],
-        v_code: [{ required: true, trigger: 'blur', validator: validatePassword }]
+        v_code: [{ required: true, trigger: 'blur', validator: validatecode }],
+        pass: [{ trigger: 'blur', validator: validatePass }],
+        checkPass: [{ trigger: 'blur', validator: validatePass2 }]
       },
       passwordType: 'password',
+      passwordType1: 'password',
       loading: false,
       showDialog: false,
       disabled: true,
@@ -101,64 +131,48 @@ export default {
   },
   methods: {
     sendsms() {
-      console.log(this.$refs['phoneform'])
-      this.$refs['phoneform'].validate(valid => {
-        console.log(6666)
-        if (valid) {
-          console.log(11)
+      this.$refs.loginForm.validateField('phone', valid => {
+        if (!valid) {
+          sendsms({ sort: 4, phone: this.loginForm.phone }).then(response => {
+            this.$message({
+              message: '恭喜你，验证码已发送成功！',
+              type: 'success'
+            })
+            this.disabled = false
+          })
         } else {
-          console.log(222)
           return false
         }
       })
     },
-    showPwd() {
-      if (this.passwordType === 'password') {
-        this.passwordType = ''
-      } else {
-        this.passwordType = 'password'
+    showPwd(i) {
+      if (i === 0) {
+        if (this.passwordType === 'password') {
+          this.passwordType = ''
+        } else {
+          this.passwordType = 'password'
+        }
+      } else if (i === 1) {
+        if (this.passwordType1 === 'password') {
+          this.passwordType1 = ''
+        } else {
+          this.passwordType1 = 'password'
+        }
       }
     },
     handleLogin() {
       this.$refs.loginForm.validate(valid => {
         if (valid) {
           this.loading = true
-          this.$store.dispatch('LoginByUsername', this.loginForm).then(() => {
+          this.$store.dispatch('LoginByUsername', { phone: this.loginForm.phone, pass: this.loginForm.pass, sort: 1 }).then(() => {
             this.loading = false
             this.$router.push({ path: '/' })
-          }).catch(() => {
-            this.loading = false
           })
         } else {
-          console.log('error submit!!')
           return false
         }
       })
-    },
-    afterQRScan() {
-      // const hash = window.location.hash.slice(1)
-      // const hashObj = getQueryObject(hash)
-      // const originUrl = window.location.origin
-      // history.replaceState({}, '', originUrl)
-      // const codeMap = {
-      //   wechat: 'code',
-      //   tencent: 'code'
-      // }
-      // const codeName = hashObj[codeMap[this.auth_type]]
-      // if (!codeName) {
-      //   alert('第三方登录失败')
-      // } else {
-      //   this.$store.dispatch('LoginByThirdparty', codeName).then(() => {
-      //     this.$router.push({ path: '/' })
-      //   })
-      // }
     }
-  },
-  created() {
-    // window.addEventListener('hashchange', this.afterQRScan)
-  },
-  destroyed() {
-    // window.removeEventListener('hashchange', this.afterQRScan)
   }
 }
 </script>
